@@ -1,0 +1,113 @@
+from decimal import Decimal, InvalidOperation
+
+from flask import Blueprint, jsonify, request
+from sqlalchemy.exc import IntegrityError
+
+from .extensions import db
+from .models import Payment
+from .webhooks import deliver_payment_webhook
+
+payments = Blueprint("payments", __name__)
+
+
+def error(message: str, status: int):
+    return jsonify(error=message), status
+
+
+@payments.post("/payments")
+def create_payment():
+    payload = request.get_json(silent=True) or {}
+    key = request.headers.get("Idempotency-Key", "").strip()
+    if not key:
+        return error("Idempotency-Key header is required.", 400)
+    if len(key) > 100:
+        return error("Idempotency-Key cannot exceed 100 characters.", 400)
+
+    try:
+        amount = Decimal(str(payload.get("amount")))
+    except (InvalidOperation, TypeError):
+        return error("Amount must be a valid decimal.", 400)
+
+    reference = str(payload.get("reference", "")).strip()
+    currency = str(payload.get("currency", "BRL")).strip().upper()
+    callback_url = payload.get("callbackUrl")
+    if amount <= 0:
+        return error("Amount must be greater than zero.", 400)
+    if not reference or len(reference) > 100:
+        return error("Reference is required and cannot exceed 100 characters.", 400)
+    if len(currency) != 3 or not currency.isalpha():
+        return error("Currency must be a three-letter ISO code.", 400)
+    if callback_url and not str(callback_url).lower().startswith(("http://", "https://")):
+        return error("Callback URL must use HTTP or HTTPS.", 400)
+
+    existing = db.session.execute(
+        db.select(Payment).where(Payment.idempotency_key == key)
+    ).scalar_one_or_none()
+    if existing:
+        same_request = (
+            existing.reference == reference
+            and existing.amount == amount
+            and existing.currency == currency
+            and existing.callback_url == callback_url
+        )
+        return (jsonify(existing.to_dict()), 200) if same_request else error(
+            "Idempotency-Key was already used with different data.", 409
+        )
+
+    payment = Payment(
+        external_id=Payment.new_external_id(),
+        reference=reference,
+        idempotency_key=key,
+        amount=amount,
+        currency=currency,
+        callback_url=callback_url,
+    )
+    db.session.add(payment)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return error("Idempotency-Key was already used.", 409)
+    return jsonify(payment.to_dict()), 201
+
+
+@payments.get("/payments/<external_id>")
+def get_payment(external_id: str):
+    payment = db.session.execute(
+        db.select(Payment).where(Payment.external_id == external_id)
+    ).scalar_one_or_none()
+    return error("Payment not found.", 404) if payment is None else jsonify(payment.to_dict())
+
+
+@payments.post("/payments/<external_id>/approve")
+def approve_payment(external_id: str):
+    return transition_payment(external_id, approved=True)
+
+
+@payments.post("/payments/<external_id>/decline")
+def decline_payment(external_id: str):
+    return transition_payment(external_id, approved=False)
+
+
+def transition_payment(external_id: str, approved: bool):
+    payment = db.session.execute(
+        db.select(Payment).where(Payment.external_id == external_id).with_for_update()
+    ).scalar_one_or_none()
+    if payment is None:
+        return error("Payment not found.", 404)
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        changed = payment.approve() if approved else payment.decline(payload.get("reason"))
+    except ValueError as exc:
+        return error(str(exc), 409)
+
+    if changed:
+        db.session.commit()
+        delivery = deliver_payment_webhook(payment)
+    else:
+        delivery = {"attempted": False, "delivered": False}
+
+    response = payment.to_dict()
+    response["webhook"] = delivery
+    return jsonify(response)
