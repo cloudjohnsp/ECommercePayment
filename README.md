@@ -42,7 +42,21 @@ POST /payments/{externalPaymentId}/decline
 {"reason": "card_declined"}
 ```
 
-O simulador envia um webhook para `callbackUrl` com o evento `payment.approved` ou `payment.declined`. A assinatura HMAC-SHA256 fica no header `X-Payment-Signature`.
+### Reembolsar
+
+Somente pagamentos aprovados podem ser reembolsados. A operação é idempotente:
+repetir a chamada não envia outro webhook.
+
+```http
+POST /payments/{externalPaymentId}/refund
+Content-Type: application/json
+
+{"reason": "customer_request"}
+```
+
+O simulador envia um webhook para `callbackUrl` com o evento
+`payment.approved`, `payment.declined` ou `payment.refunded`. A assinatura
+HMAC-SHA256 fica no header `X-Payment-Signature`.
 
 ## Desenvolvimento local
 

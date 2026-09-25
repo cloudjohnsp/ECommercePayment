@@ -89,6 +89,37 @@ def decline_payment(external_id: str):
     return transition_payment(external_id, approved=False)
 
 
+@payments.post("/payments/<external_id>/refund")
+def refund_payment(external_id: str):
+    payment = db.session.execute(
+        db.select(Payment).where(Payment.external_id == external_id).with_for_update()
+    ).scalar_one_or_none()
+    if payment is None:
+        return error("Payment not found.", 404)
+
+    payload = request.get_json(silent=True) or {}
+    reason = payload.get("reason")
+    if reason is not None:
+        reason = str(reason).strip() or None
+    if reason and len(reason) > 500:
+        return error("Refund reason cannot exceed 500 characters.", 400)
+
+    try:
+        changed = payment.refund(reason)
+    except ValueError as exc:
+        return error(str(exc), 409)
+
+    if changed:
+        db.session.commit()
+        delivery = deliver_payment_webhook(payment)
+    else:
+        delivery = {"attempted": False, "delivered": False}
+
+    response = payment.to_dict()
+    response["webhook"] = delivery
+    return jsonify(response)
+
+
 def transition_payment(external_id: str, approved: bool):
     payment = db.session.execute(
         db.select(Payment).where(Payment.external_id == external_id).with_for_update()

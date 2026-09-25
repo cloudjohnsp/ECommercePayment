@@ -62,3 +62,37 @@ def test_declined_payment_cannot_be_approved(client):
     client.post(f"/payments/{created['id']}/decline", json={"reason": "card_declined"})
     response = client.post(f"/payments/{created['id']}/approve")
     assert response.status_code == 409
+
+
+@patch("app.routes.deliver_payment_webhook")
+def test_refund_approved_payment_is_idempotent(deliver, client):
+    deliver.return_value = {"attempted": True, "delivered": True, "statusCode": 200}
+    created = create_payment(client, callback_url="http://api/webhook").json
+    client.post(f"/payments/{created['id']}/approve")
+
+    first = client.post(
+        f"/payments/{created['id']}/refund", json={"reason": "customer_request"}
+    )
+    second = client.post(f"/payments/{created['id']}/refund")
+
+    assert first.status_code == 200
+    assert first.json["status"] == "refunded"
+    assert first.json["refundReason"] == "customer_request"
+    assert first.json["refundedAt"] is not None
+    assert second.status_code == 200
+    assert second.json["webhook"]["attempted"] is False
+    assert deliver.call_count == 2
+
+
+def test_refund_pending_payment_returns_conflict(client):
+    created = create_payment(client).json
+
+    response = client.post(f"/payments/{created['id']}/refund")
+
+    assert response.status_code == 409
+
+
+def test_refund_unknown_payment_returns_not_found(client):
+    response = client.post("/payments/pay_unknown/refund")
+
+    assert response.status_code == 404
