@@ -10,6 +10,9 @@ docker compose up --build
 
 A API ficará disponível em `http://localhost:5002` e o PostgreSQL em `localhost:5433`.
 
+Valores monetários aceitam no máximo duas casas decimais e devem caber em
+`Numeric(18,2)` (`9999999999999999.99` no máximo).
+
 ## Endpoints
 
 ### Criar pagamento

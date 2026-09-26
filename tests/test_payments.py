@@ -1,5 +1,7 @@
 from unittest.mock import patch
 
+import pytest
+
 
 def create_payment(client, key="order-123", callback_url=None):
     payload = {"amount": "299.90", "currency": "BRL", "reference": "order-123"}
@@ -18,6 +20,20 @@ def test_create_payment_returns_pending_payment(client):
 
 def test_create_payment_requires_idempotency_key(client):
     response = client.post("/payments", json={"amount": 10, "reference": "order"})
+    assert response.status_code == 400
+
+
+@pytest.mark.parametrize(
+    "amount",
+    ["1.001", "10000000000000000.00", "NaN", "Infinity"],
+)
+def test_create_payment_rejects_amount_outside_numeric_contract(client, amount):
+    response = client.post(
+        "/payments",
+        json={"amount": amount, "currency": "BRL", "reference": "order-123"},
+        headers={"Idempotency-Key": f"amount-{amount}"},
+    )
+
     assert response.status_code == 400
 
 

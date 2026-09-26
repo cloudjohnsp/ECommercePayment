@@ -8,6 +8,8 @@ from .models import Payment
 from .webhooks import deliver_payment_webhook
 
 payments = Blueprint("payments", __name__)
+MAX_PAYMENT_AMOUNT = Decimal("9999999999999999.99")
+MAX_AMOUNT_DECIMAL_PLACES = 2
 
 
 def error(message: str, status: int):
@@ -31,8 +33,14 @@ def create_payment():
     reference = str(payload.get("reference", "")).strip()
     currency = str(payload.get("currency", "BRL")).strip().upper()
     callback_url = payload.get("callbackUrl")
+    if not amount.is_finite():
+        return error("Amount must be a finite decimal.", 400)
     if amount <= 0:
         return error("Amount must be greater than zero.", 400)
+    if amount.as_tuple().exponent < -MAX_AMOUNT_DECIMAL_PLACES:
+        return error("Amount cannot have more than two decimal places.", 400)
+    if amount > MAX_PAYMENT_AMOUNT:
+        return error(f"Amount cannot exceed {MAX_PAYMENT_AMOUNT}.", 400)
     if not reference or len(reference) > 100:
         return error("Reference is required and cannot exceed 100 characters.", 400)
     if len(currency) != 3 or not currency.isalpha():
