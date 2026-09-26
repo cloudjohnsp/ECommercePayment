@@ -29,6 +29,34 @@ def test_create_payment_requires_idempotency_key(client):
 
 
 @pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("reference", None),
+        ("currency", "BŔL"),
+        ("callbackUrl", "http://"),
+        ("callbackUrl", 123),
+    ],
+)
+def test_create_payment_rejects_malformed_identity_and_callback_fields(
+    client, field, value
+):
+    payload = {
+        "amount": "299.90",
+        "currency": "BRL",
+        "reference": "order-123",
+        field: value,
+    }
+
+    response = client.post(
+        "/payments",
+        json=payload,
+        headers={"Idempotency-Key": f"invalid-{field}-{value}"},
+    )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.parametrize(
     "amount",
     ["1.001", "10000000000000000.00", "NaN", "Infinity"],
 )
@@ -116,6 +144,19 @@ def test_declined_payment_cannot_be_approved(client):
     assert response.status_code == 409
 
 
+@pytest.mark.parametrize("reason", ["x" * 501, {"unexpected": "object"}])
+def test_decline_rejects_invalid_reason_without_changing_payment(client, reason):
+    created = create_payment(client).json
+
+    response = client.post(
+        f"/payments/{created['id']}/decline", json={"reason": reason}
+    )
+
+    assert response.status_code == 400
+    persisted = client.get(f"/payments/{created['id']}")
+    assert persisted.json["status"] == "pending"
+
+
 @patch("app.routes.deliver_payment_webhook")
 def test_refund_approved_payment_is_idempotent(deliver, client):
     deliver.return_value = {"attempted": True, "delivered": True, "statusCode": 200}
@@ -142,6 +183,20 @@ def test_refund_pending_payment_returns_conflict(client):
     response = client.post(f"/payments/{created['id']}/refund")
 
     assert response.status_code == 409
+
+
+@pytest.mark.parametrize("reason", ["x" * 501, ["unexpected", "array"]])
+def test_refund_rejects_invalid_reason_without_changing_payment(client, reason):
+    created = create_payment(client).json
+    client.post(f"/payments/{created['id']}/approve")
+
+    response = client.post(
+        f"/payments/{created['id']}/refund", json={"reason": reason}
+    )
+
+    assert response.status_code == 400
+    persisted = client.get(f"/payments/{created['id']}")
+    assert persisted.json["status"] == "approved"
 
 
 def test_refund_unknown_payment_returns_not_found(client):

@@ -12,6 +12,10 @@ A API ficará disponível em `http://localhost:5002` e o PostgreSQL em `localhos
 
 Valores monetários aceitam no máximo duas casas decimais e devem caber em
 `Numeric(18,2)` (`9999999999999999.99` no máximo).
+`reference` deve ser uma string não vazia de até 100 caracteres, `currency`
+aceita exatamente três letras ASCII e `callbackUrl`, quando informado, deve ser
+uma URL HTTP ou HTTPS absoluta. Motivos de recusa e reembolso são strings
+opcionais de até 500 caracteres.
 
 ## Endpoints
 

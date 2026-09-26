@@ -1,4 +1,5 @@
 from decimal import Decimal, InvalidOperation
+from urllib.parse import urlsplit
 
 from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import IntegrityError
@@ -45,9 +46,12 @@ def create_payment():
     except (InvalidOperation, TypeError):
         return error("Amount must be a valid decimal.", 400)
 
-    reference = str(payload.get("reference", "")).strip()
-    currency = str(payload.get("currency", "BRL")).strip().upper()
-    callback_url = payload.get("callbackUrl")
+    reference_value = payload.get("reference")
+    reference = reference_value.strip() if isinstance(reference_value, str) else ""
+    currency_value = payload.get("currency", "BRL")
+    currency = currency_value.strip().upper() if isinstance(currency_value, str) else ""
+    callback_value = payload.get("callbackUrl")
+    callback_url = callback_value.strip() if isinstance(callback_value, str) else None
     if not amount.is_finite():
         return error("Amount must be a finite decimal.", 400)
     if amount <= 0:
@@ -58,10 +62,18 @@ def create_payment():
         return error(f"Amount cannot exceed {MAX_PAYMENT_AMOUNT}.", 400)
     if not reference or len(reference) > 100:
         return error("Reference is required and cannot exceed 100 characters.", 400)
-    if len(currency) != 3 or not currency.isalpha():
+    if len(currency) != 3 or any(
+        character < "A" or character > "Z" for character in currency
+    ):
         return error("Currency must be a three-letter ISO code.", 400)
-    if callback_url and not str(callback_url).lower().startswith(("http://", "https://")):
-        return error("Callback URL must use HTTP or HTTPS.", 400)
+    if callback_value is not None:
+        parsed_callback = urlsplit(callback_url or "")
+        if (
+            not isinstance(callback_value, str)
+            or parsed_callback.scheme.lower() not in {"http", "https"}
+            or not parsed_callback.netloc
+        ):
+            return error("Callback URL must be an absolute HTTP or HTTPS URL.", 400)
 
     existing = db.session.execute(
         db.select(Payment).where(Payment.idempotency_key == key)
@@ -124,11 +136,9 @@ def refund_payment(external_id: str):
         return error("Payment not found.", 404)
 
     payload = request.get_json(silent=True) or {}
-    reason = payload.get("reason")
-    if reason is not None:
-        reason = str(reason).strip() or None
-    if reason and len(reason) > 500:
-        return error("Refund reason cannot exceed 500 characters.", 400)
+    reason, reason_error = parse_reason(payload, "Refund")
+    if reason_error is not None:
+        return reason_error
 
     try:
         changed = payment.refund(reason)
@@ -154,8 +164,13 @@ def transition_payment(external_id: str, approved: bool):
         return error("Payment not found.", 404)
 
     payload = request.get_json(silent=True) or {}
+    reason = None
+    if not approved:
+        reason, reason_error = parse_reason(payload, "Decline")
+        if reason_error is not None:
+            return reason_error
     try:
-        changed = payment.approve() if approved else payment.decline(payload.get("reason"))
+        changed = payment.approve() if approved else payment.decline(reason)
     except ValueError as exc:
         return error(str(exc), 409)
 
@@ -168,3 +183,16 @@ def transition_payment(external_id: str, approved: bool):
     response = payment.to_dict()
     response["webhook"] = delivery
     return jsonify(response)
+
+
+def parse_reason(payload: dict, operation: str):
+    value = payload.get("reason")
+    if value is None:
+        return None, None
+    if not isinstance(value, str):
+        return None, error(f"{operation} reason must be a string.", 400)
+
+    reason = value.strip() or None
+    if reason and len(reason) > 500:
+        return None, error(f"{operation} reason cannot exceed 500 characters.", 400)
+    return reason, None
