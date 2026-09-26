@@ -1,6 +1,11 @@
-from unittest.mock import patch
+from datetime import datetime, timezone
+from decimal import Decimal
+from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy.exc import IntegrityError
+
+from app.models import Payment, PaymentStatus
 
 
 def create_payment(client, key="order-123", callback_url=None):
@@ -42,6 +47,37 @@ def test_repeated_identical_request_returns_same_payment(client):
     second = create_payment(client)
     assert second.status_code == 200
     assert second.json["id"] == first.json["id"]
+
+
+def test_concurrent_identical_idempotency_key_returns_existing_payment(client):
+    now = datetime.now(timezone.utc)
+    existing = Payment(
+        external_id="pay_concurrent",
+        reference="order-123",
+        idempotency_key="order-123",
+        amount=Decimal("299.90"),
+        currency="BRL",
+        status=PaymentStatus.PENDING,
+        callback_url=None,
+        created_at=now,
+        updated_at=now,
+    )
+    missing_result = Mock()
+    missing_result.scalar_one_or_none.return_value = None
+    concurrent_result = Mock()
+    concurrent_result.scalar_one_or_none.return_value = existing
+    fake_db = Mock()
+    fake_db.session.execute.side_effect = [missing_result, concurrent_result]
+    fake_db.session.commit.side_effect = IntegrityError(
+        "insert payment", {}, Exception("unique violation")
+    )
+
+    with patch("app.routes.db", fake_db):
+        response = create_payment(client)
+
+    assert response.status_code == 200
+    assert response.json["id"] == "pay_concurrent"
+    fake_db.session.rollback.assert_called_once_with()
 
 
 def test_reusing_key_with_different_payload_returns_conflict(client):

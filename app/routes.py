@@ -16,6 +16,21 @@ def error(message: str, status: int):
     return jsonify(error=message), status
 
 
+def matches_creation_request(
+    payment: Payment,
+    reference: str,
+    amount: Decimal,
+    currency: str,
+    callback_url: str | None,
+) -> bool:
+    return (
+        payment.reference == reference
+        and payment.amount == amount
+        and payment.currency == currency
+        and payment.callback_url == callback_url
+    )
+
+
 @payments.post("/payments")
 def create_payment():
     payload = request.get_json(silent=True) or {}
@@ -52,13 +67,9 @@ def create_payment():
         db.select(Payment).where(Payment.idempotency_key == key)
     ).scalar_one_or_none()
     if existing:
-        same_request = (
-            existing.reference == reference
-            and existing.amount == amount
-            and existing.currency == currency
-            and existing.callback_url == callback_url
-        )
-        return (jsonify(existing.to_dict()), 200) if same_request else error(
+        return (jsonify(existing.to_dict()), 200) if matches_creation_request(
+            existing, reference, amount, currency, callback_url
+        ) else error(
             "Idempotency-Key was already used with different data.", 409
         )
 
@@ -75,6 +86,13 @@ def create_payment():
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
+        concurrent = db.session.execute(
+            db.select(Payment).where(Payment.idempotency_key == key)
+        ).scalar_one_or_none()
+        if concurrent and matches_creation_request(
+            concurrent, reference, amount, currency, callback_url
+        ):
+            return jsonify(concurrent.to_dict()), 200
         return error("Idempotency-Key was already used.", 409)
     return jsonify(payment.to_dict()), 201
 
