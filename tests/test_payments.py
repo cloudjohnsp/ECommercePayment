@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+from app.extensions import db
 from app.models import Payment, PaymentStatus
 
 
@@ -68,6 +69,41 @@ def test_create_payment_rejects_amount_outside_numeric_contract(client, amount):
     )
 
     assert response.status_code == 400
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("amount", Decimal("0")),
+        ("reference", "   "),
+        ("idempotency_key", "   "),
+        ("currency", "brl"),
+        ("external_id", "invalid"),
+        ("status", "INVALID"),
+    ],
+)
+def test_database_constraints_reject_invalid_payment_state(app, field, value):
+    now = datetime.now(timezone.utc)
+    payment = Payment(
+        external_id=Payment.new_external_id(),
+        reference="order-database-constraint",
+        idempotency_key=f"database-constraint-{field}",
+        amount=Decimal("10.00"),
+        currency="BRL",
+        status=PaymentStatus.PENDING,
+        callback_url=None,
+        created_at=now,
+        updated_at=now,
+    )
+    setattr(payment, field, value)
+
+    with app.app_context():
+        db.session.add(payment)
+
+        with pytest.raises(IntegrityError):
+            db.session.commit()
+
+        db.session.rollback()
 
 
 def test_repeated_identical_request_returns_same_payment(client):

@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Enum, Numeric, String, Text
+from sqlalchemy import CheckConstraint, DateTime, Enum, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .extensions import db
@@ -18,6 +18,32 @@ class PaymentStatus(str, enum.Enum):
 
 class Payment(db.Model):
     __tablename__ = "payments"
+    __table_args__ = (
+        CheckConstraint(
+            "amount > 0 AND amount <= 9999999999999999.99",
+            name="ck_payments_amount_range",
+        ),
+        CheckConstraint(
+            "length(trim(reference)) > 0",
+            name="ck_payments_reference_required",
+        ),
+        CheckConstraint(
+            "length(trim(idempotency_key)) > 0",
+            name="ck_payments_idempotency_key_required",
+        ),
+        CheckConstraint(
+            "length(currency) = 3 AND currency = upper(currency)",
+            name="ck_payments_currency_format",
+        ),
+        CheckConstraint(
+            "substr(external_id, 1, 4) = 'pay_'",
+            name="ck_payments_external_id_format",
+        ),
+        CheckConstraint(
+            "status IN ('PENDING', 'APPROVED', 'DECLINED', 'REFUNDED')",
+            name="ck_payments_status",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     external_id: Mapped[str] = mapped_column(String(40), unique=True, index=True, nullable=False)
