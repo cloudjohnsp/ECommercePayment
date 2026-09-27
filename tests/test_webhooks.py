@@ -49,7 +49,7 @@ def test_delivery_signs_exact_canonical_payload_with_payment_identity(post, app)
     ).encode()
 
     expected_signature = hmac.new(
-        b"test-secret", body, hashlib.sha256
+        app.config["WEBHOOK_SECRET"].encode(), body, hashlib.sha256
     ).hexdigest()
     assert kwargs["headers"] == {
         "Content-Type": "application/json",

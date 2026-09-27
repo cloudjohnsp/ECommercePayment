@@ -8,7 +8,7 @@ from app.extensions import db
 class TestConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite+pysqlite:///:memory:"
-    WEBHOOK_SECRET = "test-secret"
+    WEBHOOK_SECRET = "test-webhook-secret-with-at-least-32-bytes"
 
 
 @pytest.fixture()

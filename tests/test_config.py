@@ -6,7 +6,7 @@ from app import create_app
 class ValidConfig:
     SQLALCHEMY_DATABASE_URI = "sqlite+pysqlite:///:memory:"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    WEBHOOK_SECRET = "test-secret"
+    WEBHOOK_SECRET = "test-webhook-secret-with-at-least-32-bytes"
     WEBHOOK_TIMEOUT_SECONDS = "5"
 
 
@@ -19,6 +19,11 @@ class ValidConfig:
             "DATABASE_URL or DATABASE_PASSWORD is required",
         ),
         ("WEBHOOK_SECRET", "   ", "WEBHOOK_SECRET is required"),
+        (
+            "WEBHOOK_SECRET",
+            "short-secret",
+            "WEBHOOK_SECRET must contain at least 32 UTF-8 bytes",
+        ),
         (
             "WEBHOOK_TIMEOUT_SECONDS",
             "invalid",
@@ -51,6 +56,18 @@ def test_create_app_normalizes_webhook_timeout_to_float():
     app = create_app(ValidConfig)
 
     assert app.config["WEBHOOK_TIMEOUT_SECONDS"] == 5.0
+
+
+def test_create_app_accepts_multibyte_webhook_secret_with_32_utf8_bytes():
+    multibyte_config = type(
+        "MultibyteConfig",
+        (ValidConfig,),
+        {"WEBHOOK_SECRET": "á" * 16},
+    )
+
+    app = create_app(multibyte_config)
+
+    assert len(app.config["WEBHOOK_SECRET"].encode("utf-8")) == 32
 
 
 def test_create_app_builds_database_url_without_reparsing_special_password():

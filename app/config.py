@@ -48,6 +48,8 @@ def validate_runtime_config(config: MutableMapping[str, object]) -> None:
     webhook_secret = config.get("WEBHOOK_SECRET")
     if not isinstance(webhook_secret, str) or not webhook_secret.strip():
         raise RuntimeError("WEBHOOK_SECRET is required.")
+    if len(webhook_secret.encode("utf-8")) < 32:
+        raise RuntimeError("WEBHOOK_SECRET must contain at least 32 UTF-8 bytes.")
 
     try:
         timeout = float(config.get("WEBHOOK_TIMEOUT_SECONDS", ""))
