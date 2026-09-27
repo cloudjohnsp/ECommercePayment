@@ -2,8 +2,13 @@ services:
   payment-api:
     build: .
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/ecommerce_payment
-      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-development-secret}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ecommerce_payment
+      DATABASE_USER: ${POSTGRES_USER:-postgres}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Create .env from .env.example and set POSTGRES_PASSWORD}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?Create .env from .env.example and set WEBHOOK_SECRET}
+      WEBHOOK_TIMEOUT_SECONDS: ${WEBHOOK_TIMEOUT_SECONDS:-5}
     ports:
       - "5002:5000"
     depends_on:
@@ -14,14 +19,14 @@ services:
     image: postgres:17-alpine
     environment:
       POSTGRES_DB: ecommerce_payment
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Create .env from .env.example and set POSTGRES_PASSWORD}
     ports:
       - "5433:5432"
     volumes:
       - payment-postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d ecommerce_payment"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d ecommerce_payment"]
       interval: 5s
       timeout: 5s
       retries: 10

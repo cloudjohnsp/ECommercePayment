@@ -5,10 +5,16 @@ Simulador de gateway de pagamento desenvolvido em Flask e PostgreSQL para integr
 ## Executar com Docker
 
 ```bash
+copy .env.example .env
+# Preencha POSTGRES_PASSWORD e WEBHOOK_SECRET no arquivo .env.
 docker compose up --build
 ```
 
 A API ficará disponível em `http://localhost:5002` e o PostgreSQL em `localhost:5433`.
+O Compose interrompe a inicialização quando a senha do PostgreSQL ou o segredo
+compartilhado do webhook estiverem ausentes. Use o mesmo `WEBHOOK_SECRET` em
+`PaymentGateway:WebhookSecret` na ECommerce API. O `.env` é local e ignorado
+pelo Git.
 
 Valores monetários aceitam no máximo duas casas decimais e devem caber em
 `Numeric(18,2)` (`9999999999999999.99` no máximo).
@@ -72,9 +78,17 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 copy .env.example .env
+# Preencha POSTGRES_PASSWORD e WEBHOOK_SECRET no arquivo .env.
 flask --app wsgi db upgrade
 flask --app wsgi run --port 5002
 ```
+
+O extra `dotenv` do Flask carrega o `.env` nesses comandos. A aplicação falha
+rapidamente quando a conexão do banco, `WEBHOOK_SECRET` ou um timeout positivo
+não estiverem configurados, sem recorrer a credenciais fixas no código. Uma
+`DATABASE_URL` explícita continua sendo aceita e tem precedência sobre os campos
+`DATABASE_*`; os campos separados preservam corretamente senhas com caracteres
+especiais.
 
 ## Testes
 
