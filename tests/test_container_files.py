@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -28,3 +29,15 @@ def test_docker_build_context_excludes_local_and_sensitive_files():
         ".pytest_cache",
         "tests",
     }.issubset(ignored)
+
+
+def test_compose_publishes_development_ports_only_on_loopback():
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    published_ports = re.findall(
+        r'^\s*-\s*"((?:127\.0\.0\.1:)?\d+:\d+)"\s*$',
+        compose,
+        flags=re.MULTILINE,
+    )
+
+    assert published_ports
+    assert all(binding.startswith("127.0.0.1:") for binding in published_ports)

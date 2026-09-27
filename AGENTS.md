@@ -119,6 +119,7 @@ as `/health`.
   containing real passwords.
 - Add new settings to `Config`, document them in `.env.example`, and pass them
   through `docker-compose.yml` when containers require them.
+- Keep development-only published ports bound to `127.0.0.1`.
 - No webhook secret or database password has a runtime default; startup must fail
   when required configuration is missing.
 - Validate callback URLs before persisting them and preserve the origin

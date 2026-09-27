@@ -13,6 +13,8 @@ docker compose up --build
 ```
 
 A API ficará disponível em `http://localhost:5002` e o PostgreSQL em `localhost:5433`.
+As duas portas são vinculadas somente a `127.0.0.1` e não ficam expostas à rede
+local.
 O Compose interrompe a inicialização quando a senha do PostgreSQL ou o segredo
 compartilhado do webhook estiverem ausentes ou forem inválidos. O segredo deve
 conter ao menos 32 bytes UTF-8; use o mesmo `WEBHOOK_SECRET` em
