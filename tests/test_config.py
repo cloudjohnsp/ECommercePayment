@@ -8,6 +8,7 @@ class ValidConfig:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     WEBHOOK_SECRET = "test-webhook-secret-with-at-least-32-bytes"
     WEBHOOK_TIMEOUT_SECONDS = "5"
+    ALLOWED_CALLBACK_ORIGINS = "http://api,https://example.com:443"
 
 
 @pytest.mark.parametrize(
@@ -23,6 +24,16 @@ class ValidConfig:
             "WEBHOOK_SECRET",
             "short-secret",
             "WEBHOOK_SECRET must contain at least 32 UTF-8 bytes",
+        ),
+        (
+            "ALLOWED_CALLBACK_ORIGINS",
+            "   ",
+            "ALLOWED_CALLBACK_ORIGINS is required",
+        ),
+        (
+            "ALLOWED_CALLBACK_ORIGINS",
+            "https://example.com/path",
+            "ALLOWED_CALLBACK_ORIGINS must contain only absolute HTTP or HTTPS origins",
         ),
         (
             "WEBHOOK_TIMEOUT_SECONDS",
@@ -56,6 +67,14 @@ def test_create_app_normalizes_webhook_timeout_to_float():
     app = create_app(ValidConfig)
 
     assert app.config["WEBHOOK_TIMEOUT_SECONDS"] == 5.0
+
+
+def test_create_app_normalizes_allowed_callback_origins():
+    app = create_app(ValidConfig)
+
+    assert app.config["ALLOWED_CALLBACK_ORIGINS"] == frozenset(
+        {"http://api", "https://example.com"}
+    )
 
 
 def test_create_app_accepts_multibyte_webhook_secret_with_32_utf8_bytes():

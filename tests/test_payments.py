@@ -36,6 +36,7 @@ def test_create_payment_requires_idempotency_key(client):
         ("currency", "BŔL"),
         ("callbackUrl", "http://"),
         ("callbackUrl", 123),
+        ("callbackUrl", "http://user:password@api/webhook"),
     ],
 )
 def test_create_payment_rejects_malformed_identity_and_callback_fields(
@@ -55,6 +56,17 @@ def test_create_payment_rejects_malformed_identity_and_callback_fields(
     )
 
     assert response.status_code == 400
+
+
+def test_create_payment_rejects_callback_origin_outside_allowlist(client):
+    response = create_payment(
+        client,
+        key="disallowed-callback",
+        callback_url="http://169.254.169.254/latest/meta-data",
+    )
+
+    assert response.status_code == 400
+    assert response.json == {"error": "Callback URL origin is not allowed."}
 
 
 @pytest.mark.parametrize(

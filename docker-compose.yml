@@ -9,6 +9,7 @@ services:
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Create .env from .env.example and set POSTGRES_PASSWORD}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:?Create .env from .env.example and set WEBHOOK_SECRET}
       WEBHOOK_TIMEOUT_SECONDS: ${WEBHOOK_TIMEOUT_SECONDS:-5}
+      ALLOWED_CALLBACK_ORIGINS: ${ALLOWED_CALLBACK_ORIGINS:?Create .env from .env.example and set ALLOWED_CALLBACK_ORIGINS}
     ports:
       - "5002:5000"
     depends_on:

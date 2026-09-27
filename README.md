@@ -8,6 +8,7 @@ Simulador de gateway de pagamento desenvolvido em Flask e PostgreSQL para integr
 copy .env.example .env
 # Preencha POSTGRES_PASSWORD e WEBHOOK_SECRET no arquivo .env.
 # WEBHOOK_SECRET deve conter ao menos 32 bytes UTF-8 aleatórios.
+# Ajuste ALLOWED_CALLBACK_ORIGINS para as origens válidas da ECommerce API.
 docker compose up --build
 ```
 
@@ -30,7 +31,9 @@ Valores monetários aceitam no máximo duas casas decimais e devem caber em
 `Numeric(18,2)` (`9999999999999999.99` no máximo).
 `reference` deve ser uma string não vazia de até 100 caracteres, `currency`
 aceita exatamente três letras ASCII e `callbackUrl`, quando informado, deve ser
-uma URL HTTP ou HTTPS absoluta. Motivos de recusa e reembolso são strings
+uma URL HTTP ou HTTPS absoluta cuja origem esteja em `ALLOWED_CALLBACK_ORIGINS`.
+Essa allowlist, separada por vírgulas, impede que o simulador seja usado para
+enviar webhooks a serviços internos arbitrários. Motivos de recusa e reembolso são strings
 opcionais de até 500 caracteres.
 
 ## Endpoints
@@ -96,6 +99,7 @@ pip install -r requirements.txt
 copy .env.example .env
 # Preencha POSTGRES_PASSWORD e WEBHOOK_SECRET no arquivo .env.
 # WEBHOOK_SECRET deve conter ao menos 32 bytes UTF-8 aleatórios.
+# Ajuste ALLOWED_CALLBACK_ORIGINS para as origens válidas da ECommerce API.
 flask --app wsgi db upgrade
 flask --app wsgi run --port 5002
 ```

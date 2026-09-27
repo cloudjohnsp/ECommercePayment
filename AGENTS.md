@@ -90,6 +90,8 @@ as `/health`.
 - Serialize the payload deterministically before signing it.
 - Sign the exact request body with HMAC-SHA256 using `WEBHOOK_SECRET`.
 - Put the hexadecimal signature in `X-Payment-Signature`.
+- Accept callback URLs only when their normalized HTTP(S) origin is listed in
+  `ALLOWED_CALLBACK_ORIGINS`; never broaden the allowlist from request data.
 - Treat webhook delivery as best effort: a network failure must be logged and
   reported in the transition response, not roll back the payment state.
 - Always configure a finite timeout through `WEBHOOK_TIMEOUT_SECONDS`.

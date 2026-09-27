@@ -1,9 +1,9 @@
 from decimal import Decimal, InvalidOperation
-from urllib.parse import urlsplit
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
+from .callbacks import normalize_http_origin
 from .extensions import db
 from .models import Payment
 from .webhooks import deliver_payment_webhook
@@ -67,13 +67,11 @@ def create_payment():
     ):
         return error("Currency must be a three-letter ISO code.", 400)
     if callback_value is not None:
-        parsed_callback = urlsplit(callback_url or "")
-        if (
-            not isinstance(callback_value, str)
-            or parsed_callback.scheme.lower() not in {"http", "https"}
-            or not parsed_callback.netloc
-        ):
+        callback_origin = normalize_http_origin(callback_url or "")
+        if not isinstance(callback_value, str) or callback_origin is None:
             return error("Callback URL must be an absolute HTTP or HTTPS URL.", 400)
+        if callback_origin not in current_app.config["ALLOWED_CALLBACK_ORIGINS"]:
+            return error("Callback URL origin is not allowed.", 400)
 
     existing = db.session.execute(
         db.select(Payment).where(Payment.idempotency_key == key)

@@ -4,6 +4,8 @@ from collections.abc import MutableMapping
 
 from sqlalchemy import URL
 
+from .callbacks import parse_allowed_callback_origins
+
 
 class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
@@ -17,6 +19,7 @@ class Config:
     )
     WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET")
     WEBHOOK_TIMEOUT_SECONDS = os.getenv("WEBHOOK_TIMEOUT_SECONDS", "5")
+    ALLOWED_CALLBACK_ORIGINS = os.getenv("ALLOWED_CALLBACK_ORIGINS")
 
 
 def validate_runtime_config(config: MutableMapping[str, object]) -> None:
@@ -50,6 +53,13 @@ def validate_runtime_config(config: MutableMapping[str, object]) -> None:
         raise RuntimeError("WEBHOOK_SECRET is required.")
     if len(webhook_secret.encode("utf-8")) < 32:
         raise RuntimeError("WEBHOOK_SECRET must contain at least 32 UTF-8 bytes.")
+
+    try:
+        config["ALLOWED_CALLBACK_ORIGINS"] = parse_allowed_callback_origins(
+            config.get("ALLOWED_CALLBACK_ORIGINS")
+        )
+    except ValueError as exception:
+        raise RuntimeError(str(exception)) from exception
 
     try:
         timeout = float(config.get("WEBHOOK_TIMEOUT_SECONDS", ""))
