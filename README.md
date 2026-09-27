@@ -19,6 +19,10 @@ pelo Git.
 `GET /health` retorna `200` somente quando o processo consegue consultar o
 PostgreSQL. Quando o banco está indisponível, responde `503`; o healthcheck do
 container e o readiness da ECommerce API usam esse resultado.
+A imagem executa migrations e o Gunicorn como usuário não privilegiado e copia
+somente o código, a configuração Alembic e o entry point necessários em runtime.
+Ambientes virtuais, `.env`, metadados Git, caches e testes não entram no contexto
+de build.
 
 Valores monetários aceitam no máximo duas casas decimais e devem caber em
 `Numeric(18,2)` (`9999999999999999.99` no máximo).

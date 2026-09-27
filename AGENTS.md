@@ -25,6 +25,8 @@ modify the ECommerce API database directly.
 - `tests/`: pytest fixtures and API behavior tests.
 - `wsgi.py`: WSGI entry point used by Flask and Gunicorn.
 - `docker-compose.yml`: local API and PostgreSQL services.
+- `.dockerignore`: excludes secrets, local environments, caches, tests, and Git
+  metadata from the container build context.
 
 ## Design and dependency conventions
 
@@ -114,7 +116,8 @@ as `/health`.
   containing real passwords.
 - Add new settings to `Config`, document them in `.env.example`, and pass them
   through `docker-compose.yml` when containers require them.
-- The default secret is for development only.
+- No webhook secret or database password has a runtime default; startup must fail
+  when required configuration is missing.
 - Validate callback URLs before persisting them. If this simulator is ever
   exposed outside a trusted development environment, add SSRF protections
   before allowing arbitrary webhook destinations.
