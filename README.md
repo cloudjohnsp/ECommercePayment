@@ -16,6 +16,10 @@ compartilhado do webhook estiverem ausentes. Use o mesmo `WEBHOOK_SECRET` em
 `PaymentGateway:WebhookSecret` na ECommerce API. O `.env` é local e ignorado
 pelo Git.
 
+`GET /health` retorna `200` somente quando o processo consegue consultar o
+PostgreSQL. Quando o banco está indisponível, responde `503`; o healthcheck do
+container e o readiness da ECommerce API usam esse resultado.
+
 Valores monetários aceitam no máximo duas casas decimais e devem caber em
 `Numeric(18,2)` (`9999999999999999.99` no máximo).
 `reference` deve ser uma string não vazia de até 100 caracteres, `currency`
@@ -24,6 +28,12 @@ uma URL HTTP ou HTTPS absoluta. Motivos de recusa e reembolso são strings
 opcionais de até 500 caracteres.
 
 ## Endpoints
+
+### Saúde
+
+```http
+GET /health
+```
 
 ### Criar pagamento
 

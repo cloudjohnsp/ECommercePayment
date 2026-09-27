@@ -1,4 +1,6 @@
 from flask import Flask, jsonify
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from .config import Config, validate_runtime_config
 from .extensions import db, migrate
@@ -16,6 +18,16 @@ def create_app(config: type[Config] = Config) -> Flask:
 
     @app.get("/health")
     def health():
+        try:
+            db.session.execute(text("SELECT 1"))
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.logger.warning(
+                "Payment database health check failed.",
+                exc_info=True,
+            )
+            return jsonify(status="unhealthy"), 503
+
         return jsonify(status="healthy")
 
     return app
