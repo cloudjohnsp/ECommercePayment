@@ -92,6 +92,7 @@ as `/health`.
 - Put the hexadecimal signature in `X-Payment-Signature`.
 - Accept callback URLs only when their normalized HTTP(S) origin is listed in
   `ALLOWED_CALLBACK_ORIGINS`; never broaden the allowlist from request data.
+- Never follow webhook redirects; only a 2xx response counts as delivered.
 - Treat webhook delivery as best effort: a network failure must be logged and
   reported in the transition response, not roll back the payment state.
 - Always configure a finite timeout through `WEBHOOK_TIMEOUT_SECONDS`.
@@ -120,9 +121,8 @@ as `/health`.
   through `docker-compose.yml` when containers require them.
 - No webhook secret or database password has a runtime default; startup must fail
   when required configuration is missing.
-- Validate callback URLs before persisting them. If this simulator is ever
-  exposed outside a trusted development environment, add SSRF protections
-  before allowing arbitrary webhook destinations.
+- Validate callback URLs before persisting them and preserve the origin
+  allowlist and redirect protections against SSRF.
 
 ## Testing conventions
 

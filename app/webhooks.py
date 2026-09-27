@@ -30,10 +30,11 @@ def deliver_payment_webhook(payment: Payment) -> dict:
                 "X-Payment-Signature": signature,
             },
             timeout=current_app.config["WEBHOOK_TIMEOUT_SECONDS"],
+            allow_redirects=False,
         )
         return {
             "attempted": True,
-            "delivered": response.ok,
+            "delivered": 200 <= response.status_code < 300,
             "statusCode": response.status_code,
         }
     except requests.RequestException as exc:

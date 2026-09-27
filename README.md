@@ -33,8 +33,9 @@ Valores monetários aceitam no máximo duas casas decimais e devem caber em
 aceita exatamente três letras ASCII e `callbackUrl`, quando informado, deve ser
 uma URL HTTP ou HTTPS absoluta cuja origem esteja em `ALLOWED_CALLBACK_ORIGINS`.
 Essa allowlist, separada por vírgulas, impede que o simulador seja usado para
-enviar webhooks a serviços internos arbitrários. Motivos de recusa e reembolso são strings
-opcionais de até 500 caracteres.
+enviar webhooks a serviços internos arbitrários. Redirecionamentos não são
+seguidos e apenas respostas 2xx são consideradas entregues. Motivos de recusa e
+reembolso são strings opcionais de até 500 caracteres.
 
 ## Endpoints
 

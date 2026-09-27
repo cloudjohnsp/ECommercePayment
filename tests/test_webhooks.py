@@ -56,6 +56,7 @@ def test_delivery_signs_exact_canonical_payload_with_payment_identity(post, app)
         "X-Payment-Signature": expected_signature,
     }
     assert kwargs["timeout"] == app.config["WEBHOOK_TIMEOUT_SECONDS"]
+    assert kwargs["allow_redirects"] is False
 
 
 @patch("app.webhooks.requests.post")
@@ -75,6 +76,22 @@ def test_non_success_response_is_reported_without_rolling_back_state(post, app):
         result = deliver_payment_webhook(build_payment())
 
     assert result == {"attempted": True, "delivered": False, "statusCode": 503}
+
+
+@patch("app.webhooks.requests.post")
+def test_redirect_is_not_followed_or_reported_as_delivered(post, app):
+    post.return_value = Mock(
+        ok=True,
+        status_code=307,
+        headers={"Location": "http://169.254.169.254/latest/meta-data"},
+    )
+
+    with app.app_context():
+        result = deliver_payment_webhook(build_payment())
+
+    assert result == {"attempted": True, "delivered": False, "statusCode": 307}
+    post.assert_called_once()
+    assert post.call_args.kwargs["allow_redirects"] is False
 
 
 @patch("app.webhooks.requests.post")
