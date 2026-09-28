@@ -19,7 +19,7 @@ function Invoke-Python {
 Push-Location $root
 try {
     if (-not $SkipInstall) {
-        Invoke-Python -Arguments @("-m", "pip", "install", "--requirement", "requirements.txt")
+        Invoke-Python -Arguments @("-m", "pip", "install", "--requirement", "requirements-dev.txt")
     }
     Invoke-Python -Arguments @("-m", "ruff", "check", ".")
     Invoke-Python -Arguments @("-m", "compileall", "-q", "app", "tests", "wsgi.py")
