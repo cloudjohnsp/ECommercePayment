@@ -21,6 +21,7 @@ def build_payment(callback_url="http://ecommerce-api/api/webhooks/payments"):
         currency="BRL",
         status=PaymentStatus.APPROVED,
         callback_url=callback_url,
+        correlation_id="checkout-123",
         created_at=now,
         updated_at=now,
         processed_at=now,
@@ -39,11 +40,15 @@ def test_delivery_signs_exact_canonical_payload_with_payment_identity(post, app)
     _, kwargs = post.call_args
     body = kwargs["data"]
     payload = json.loads(body)
-    assert payload["event"] == "payment.approved"
-    assert payload["data"]["id"] == "pay_contract"
-    assert payload["data"]["reference"] == "4c6bd984-e0aa-45df-aaf5-f932755c20d8"
-    assert payload["data"]["amount"] == "299.90"
-    assert payload["data"]["currency"] == "BRL"
+    assert payload["messageId"]
+    assert payload["eventType"] == "payment.approved"
+    assert payload["version"] == "1"
+    assert payload["occurredAt"]
+    assert payload["correlationId"] == "checkout-123"
+    assert payload["payload"]["id"] == "pay_contract"
+    assert payload["payload"]["reference"] == "4c6bd984-e0aa-45df-aaf5-f932755c20d8"
+    assert payload["payload"]["amount"] == "299.90"
+    assert payload["payload"]["currency"] == "BRL"
     assert body == json.dumps(
         payload, separators=(",", ":"), sort_keys=True
     ).encode()
@@ -54,6 +59,7 @@ def test_delivery_signs_exact_canonical_payload_with_payment_identity(post, app)
     assert kwargs["headers"] == {
         "Content-Type": "application/json",
         "X-Payment-Signature": expected_signature,
+        "X-Correlation-ID": "checkout-123",
     }
     assert kwargs["timeout"] == app.config["WEBHOOK_TIMEOUT_SECONDS"]
     assert kwargs["allow_redirects"] is False

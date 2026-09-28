@@ -9,10 +9,12 @@ from app.extensions import db
 from app.models import Payment, PaymentStatus
 
 
-def create_payment(client, key="order-123", callback_url=None):
+def create_payment(client, key="order-123", callback_url=None, correlation_id=None):
     payload = {"amount": "299.90", "currency": "BRL", "reference": "order-123"}
     if callback_url:
         payload["callbackUrl"] = callback_url
+    if correlation_id:
+        payload["correlationId"] = correlation_id
     return client.post("/payments", json=payload, headers={"Idempotency-Key": key})
 
 
@@ -26,6 +28,37 @@ def test_create_payment_returns_pending_payment(client):
 
 def test_create_payment_requires_idempotency_key(client):
     response = client.post("/payments", json={"amount": 10, "reference": "order"})
+    assert response.status_code == 400
+
+
+def test_create_payment_persists_correlation_id(client, app):
+    response = create_payment(
+        client,
+        key="correlated-payment",
+        correlation_id="checkout-123",
+    )
+
+    assert response.status_code == 201
+    with app.app_context():
+        payment = db.session.execute(
+            db.select(Payment).where(Payment.external_id == response.json["id"])
+        ).scalar_one()
+        assert payment.correlation_id == "checkout-123"
+
+
+@pytest.mark.parametrize("correlation_id", [" ", "invalid correlation", "a" * 129])
+def test_create_payment_rejects_invalid_correlation_id(client, correlation_id):
+    response = client.post(
+        "/payments",
+        json={
+            "amount": "10.00",
+            "currency": "BRL",
+            "reference": "order-correlation",
+            "correlationId": correlation_id,
+        },
+        headers={"Idempotency-Key": f"correlation-{len(correlation_id)}"},
+    )
+
     assert response.status_code == 400
 
 
@@ -104,6 +137,7 @@ def test_database_constraints_reject_invalid_payment_state(app, field, value):
         currency="BRL",
         status=PaymentStatus.PENDING,
         callback_url=None,
+        correlation_id="database-constraint",
         created_at=now,
         updated_at=now,
     )
@@ -135,6 +169,7 @@ def test_concurrent_identical_idempotency_key_returns_existing_payment(client):
         currency="BRL",
         status=PaymentStatus.PENDING,
         callback_url=None,
+        correlation_id="concurrent-request",
         created_at=now,
         updated_at=now,
     )

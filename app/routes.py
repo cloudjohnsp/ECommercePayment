@@ -1,4 +1,5 @@
 from decimal import Decimal, InvalidOperation
+import uuid
 
 from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy.exc import IntegrityError
@@ -11,6 +12,7 @@ from .webhooks import deliver_payment_webhook
 payments = Blueprint("payments", __name__)
 MAX_PAYMENT_AMOUNT = Decimal("9999999999999999.99")
 MAX_AMOUNT_DECIMAL_PLACES = 2
+MAX_CORRELATION_ID_LENGTH = 128
 
 
 def error(message: str, status: int):
@@ -52,6 +54,23 @@ def create_payment():
     currency = currency_value.strip().upper() if isinstance(currency_value, str) else ""
     callback_value = payload.get("callbackUrl")
     callback_url = callback_value.strip() if isinstance(callback_value, str) else None
+    correlation_value = payload.get("correlationId")
+    if correlation_value is None:
+        correlation_id = uuid.uuid4().hex
+    elif not isinstance(correlation_value, str):
+        return error("Correlation ID must be a string.", 400)
+    else:
+        correlation_id = correlation_value.strip()
+        if (
+            not correlation_id
+            or len(correlation_id) > MAX_CORRELATION_ID_LENGTH
+            or not all(
+                character.isascii()
+                and (character.isalnum() or character in "-_.")
+                for character in correlation_id
+            )
+        ):
+            return error("Correlation ID is invalid.", 400)
     if not amount.is_finite():
         return error("Amount must be a finite decimal.", 400)
     if amount <= 0:
@@ -90,6 +109,7 @@ def create_payment():
         amount=amount,
         currency=currency,
         callback_url=callback_url,
+        correlation_id=correlation_id,
     )
     db.session.add(payment)
     try:
@@ -112,7 +132,11 @@ def get_payment(external_id: str):
     payment = db.session.execute(
         db.select(Payment).where(Payment.external_id == external_id)
     ).scalar_one_or_none()
-    return error("Payment not found.", 404) if payment is None else jsonify(payment.to_dict())
+    return (
+        error("Payment not found.", 404)
+        if payment is None
+        else jsonify(payment.to_dict())
+    )
 
 
 @payments.post("/payments/<external_id>/approve")

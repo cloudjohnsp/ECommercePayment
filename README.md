@@ -58,7 +58,8 @@ Content-Type: application/json
   "amount": 299.90,
   "currency": "BRL",
   "reference": "order-123",
-  "callbackUrl": "http://host.docker.internal:5000/api/webhooks/payments"
+  "callbackUrl": "http://host.docker.internal:5000/api/webhooks/payments",
+  "correlationId": "checkout-123"
 }
 ```
 
@@ -90,7 +91,10 @@ Content-Type: application/json
 ```
 
 O simulador envia um webhook para `callbackUrl` com o evento
-`payment.approved`, `payment.declined` ou `payment.refunded`. A assinatura
+`payment.approved`, `payment.declined` ou `payment.refunded` dentro do envelope
+versionado descrito em [`docs/integration-events-v1.md`](docs/integration-events-v1.md).
+O `correlationId` recebido na criação do pagamento é persistido e devolvido no
+envelope e no header `X-Correlation-ID`. A assinatura
 HMAC-SHA256 fica no header `X-Payment-Signature`.
 
 ## Desenvolvimento local

@@ -57,6 +57,7 @@ class Payment(db.Model):
         nullable=False,
     )
     callback_url: Mapped[str | None] = mapped_column(Text)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
     failure_reason: Mapped[str | None] = mapped_column(String(500))
     refund_reason: Mapped[str | None] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(
