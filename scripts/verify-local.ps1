@@ -21,13 +21,16 @@ try {
     if (-not $SkipInstall) {
         Invoke-Python -Arguments @("-m", "pip", "install", "--requirement", "requirements.txt")
     }
+    Invoke-Python -Arguments @("-m", "ruff", "check", ".")
     Invoke-Python -Arguments @("-m", "compileall", "-q", "app", "tests", "wsgi.py")
     Invoke-Python -Arguments @("-m", "pytest")
 
     if (-not $SkipImage) {
         $revision = (& git rev-parse HEAD).Trim()
+        $dirty = -not [string]::IsNullOrWhiteSpace((& git status --porcelain) -join "`n")
+        $tag = "ecommerce-payment:sha-$revision" + $(if ($dirty) { "-dirty" } else { "" })
         & docker build --label "org.opencontainers.image.revision=$revision" `
-            --tag "ecommerce-payment:sha-$revision" .
+            --tag $tag .
         if ($LASTEXITCODE -ne 0) { throw "Payment image build failed." }
     }
 }

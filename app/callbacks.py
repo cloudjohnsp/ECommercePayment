@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from urllib.parse import SplitResult, urlsplit
+from urllib.parse import urlsplit
 
 
 def normalize_http_origin(value: str) -> str | None:

@@ -121,8 +121,9 @@ especiais.
 
 ## Testes
 
-O gate local equivalente ao CI valida sintaxe, executa o pytest e constrói uma
-imagem identificada pelo commit atual, sem publicar a imagem:
+O gate local equivalente ao CI executa Ruff, valida sintaxe, executa o pytest e
+constrói uma imagem identificada pelo commit atual, sem publicá-la. Em um
+worktree com alterações, a tag recebe o sufixo `-dirty`:
 
 ```powershell
 .\scripts\verify-local.ps1

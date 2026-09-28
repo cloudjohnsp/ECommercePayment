@@ -119,7 +119,7 @@ def test_create_payment_rejects_amount_outside_numeric_contract(client, amount):
 @pytest.mark.parametrize(
     ("field", "value"),
     [
-        ("amount", Decimal("0")),
+        ("amount", Decimal(0)),
         ("reference", "   "),
         ("idempotency_key", "   "),
         ("currency", "brl"),

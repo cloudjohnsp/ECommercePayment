@@ -4,9 +4,8 @@ Revision ID: 0004_add_payment_correlation_id
 Revises: 0003_add_payment_constraints
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0004_add_payment_correlation_id"
 down_revision = "0003_add_payment_constraints"
