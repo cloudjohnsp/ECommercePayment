@@ -123,7 +123,10 @@ especiais.
 
 O gate local equivalente ao CI executa Ruff, valida sintaxe, executa o pytest e
 constrói uma imagem identificada pelo commit atual, sem publicá-la. Em um
-worktree com alterações, a tag recebe o sufixo `-dirty`:
+worktree com alterações, a tag recebe o sufixo `-dirty`. As dependências
+transitivas de runtime e teste também são fixadas em `requirements.txt` e
+`requirements-dev.txt`, evitando que uma nova resolução do PyPI altere
+silenciosamente o conteúdo da imagem ou do gate:
 
 ```powershell
 .\scripts\verify-local.ps1

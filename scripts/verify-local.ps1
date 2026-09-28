@@ -21,6 +21,7 @@ try {
     if (-not $SkipInstall) {
         Invoke-Python -Arguments @("-m", "pip", "install", "--requirement", "requirements-dev.txt")
     }
+    Invoke-Python -Arguments @("-m", "pip", "check")
     Invoke-Python -Arguments @("-m", "ruff", "check", ".")
     Invoke-Python -Arguments @("-m", "compileall", "-q", "app", "tests", "wsgi.py")
     Invoke-Python -Arguments @("-m", "pytest")

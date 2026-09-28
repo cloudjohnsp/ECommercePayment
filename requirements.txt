@@ -1,6 +1,25 @@
+# Fully pinned runtime dependency set used by reproducible container builds.
+alembic==1.20.0
+blinker==1.9.0
+certifi==2026.7.22
+charset-normalizer==3.5.1
+click==8.5.0
 Flask[dotenv]==3.1.2
 Flask-Migrate==4.1.0
 Flask-SQLAlchemy==3.1.1
 gunicorn==23.0.0
+idna==3.20
+itsdangerous==2.2.0
+Jinja2==3.1.6
+Mako==1.4.3
+MarkupSafe==3.0.3
+packaging==26.3
 psycopg[binary]==3.2.10
+psycopg-binary==3.2.10
+python-dotenv==1.2.3
 requests==2.32.5
+SQLAlchemy==2.1.1
+typing_extensions==4.16.0
+tzdata==2026.4
+urllib3==2.8.0
+Werkzeug==3.1.9
