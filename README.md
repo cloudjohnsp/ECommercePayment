@@ -121,6 +121,20 @@ especiais.
 
 ## Testes
 
+O gate local equivalente ao CI valida sintaxe, executa o pytest e constrói uma
+imagem identificada pelo commit atual, sem publicar a imagem:
+
+```powershell
+.\scripts\verify-local.ps1
+```
+
+Para reutilizar um ambiente Python já preparado, informe o executável e omita a
+instalação:
+
+```powershell
+.\scripts\verify-local.ps1 -Python .\.test-venv\Scripts\python.exe -SkipInstall
+```
+
 ```bash
 pytest
 ```
