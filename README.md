@@ -128,15 +128,17 @@ transitivas de runtime e teste também são fixadas em `requirements.txt` e
 `requirements-dev.txt`, evitando que uma nova resolução do PyPI altere
 silenciosamente o conteúdo da imagem ou do gate:
 
-```powershell
-.\scripts\verify-local.ps1
+```bash
+bash ./scripts/verify-local.sh
 ```
 
 Para reutilizar um ambiente Python já preparado, informe o executável e omita a
 instalação:
 
-```powershell
-.\scripts\verify-local.ps1 -Python .\.test-venv\Scripts\python.exe -SkipInstall
+```bash
+bash ./scripts/verify-local.sh \
+  --python ./.test-venv/bin/python \
+  --skip-install
 ```
 
 ```bash

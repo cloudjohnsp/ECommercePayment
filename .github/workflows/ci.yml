@@ -33,5 +33,5 @@ jobs:
             requirements-dev.txt
 
       - name: Run local-equivalent Payment gate
-        shell: pwsh
-        run: ./scripts/verify-local.ps1
+        shell: bash
+        run: bash ./scripts/verify-local.sh
